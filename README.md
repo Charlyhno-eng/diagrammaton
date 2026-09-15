@@ -4,16 +4,17 @@
 
 ---
 
-Diagrammaton is a visual editor for building animated diagrams.
-Start with an empty canvas and arrange the blocks yourself.
-Connect blocks with straight, orthogonal, or bidirectional links.
-Use animated flows to explain software, construction, or electrical ideas.
-Edit block titles, descriptions, colors, positions, and dimensions.
-Copy and paste blocks while shaping a diagram.
-Preview the complete composition directly in the editor.
-Export the finished diagram as a fluid animated GIF.
-Switch between English and French while working.
-Choose a background theme that fits the diagram.
+Diagrammaton is an HTML-first editor for rich, animated technical diagrams.
+
+- Start from layered system-landscape and decision-workflow compositions.
+- Combine semantic DOM components: platforms, boundaries, services, data stores, actors, actions, cards, and metrics.
+- Connect components with curved, orthogonal, straight, animated, dashed, or bidirectional routes.
+- Edit labels, badges, capabilities, colors, positions, and dimensions without drawing individual primitives.
+- Zoom through large compositions while keeping every component and connector crisp.
+- Export a self-contained HTML document with its styles and motion embedded.
+- Switch between English and French and four visual themes while working.
+
+Diagram nodes are real HTML elements. SVG is deliberately limited to the connector layer, giving the editor the expressive layout of a web document without sacrificing precise routes.
 
 ---
 
