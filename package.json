@@ -11,21 +11,24 @@
     "test:e2e": "playwright test",
     "test:e2e:update": "playwright test --update-snapshots",
     "test:watch": "vitest",
-    "gif:service": ".gif-service-venv/bin/python gif_service.py",
+    "gif:service": "node --import tsx gif-service.ts",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
     "lucide-react": "latest",
+    "playwright": "^1.63.0",
     "react": "latest",
     "react-dom": "latest",
     "react-router-dom": "latest",
+    "sharp": "^0.35.4",
     "simple-icons": "^16.31.0"
   },
   "devDependencies": {
     "@eslint/js": "latest",
     "@playwright/test": "^1.63.0",
+    "@types/node": "^22.20.3",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "autoprefixer": "latest",
@@ -34,6 +37,7 @@
     "eslint-plugin-react-refresh": "latest",
     "globals": "latest",
     "tailwindcss": "latest",
+    "tsx": "^4.23.13",
     "typescript": "~5.7.2",
     "typescript-eslint": "latest",
     "vite": "latest",

@@ -1,11 +1,30 @@
-import { defineConfig, loadEnv } from 'vite'
+import type { IncomingMessage, ServerResponse } from 'node:http'
+import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
+import { createGifRequestHandler } from './gif-service.ts'
 
-export default defineConfig(({ mode }) => {
-  const gifServiceUrl = loadEnv(mode, '.', '').GIF_SERVICE_URL ?? 'http://127.0.0.1:8000'
+function gifRenderer(): Plugin {
+  const handler = createGifRequestHandler()
+  const middleware = (request: IncomingMessage, response: ServerResponse, next: () => void) => {
+    const path = new URL(request.url ?? '/', 'http://localhost').pathname
+    if (path !== '/api/gif' && path !== '/health') {
+      next()
+      return
+    }
+    void handler(request, response)
+  }
 
   return {
-    plugins: [react()],
-    server: { proxy: { '/api/gif': { target: gifServiceUrl, changeOrigin: true } } },
+    name: 'diagrammaton-gif-renderer',
+    configureServer(server) {
+      server.middlewares.use(middleware)
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(middleware)
+    },
   }
+}
+
+export default defineConfig({
+  plugins: [react(), gifRenderer()],
 })

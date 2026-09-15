@@ -5,7 +5,7 @@ const GIF_SERVICE_PATH = '/api/gif'
 
 export const gifFileName = (title: string) => `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'diagrammaton'}.gif`
 
-/** Sends the self-contained HTML artifact to the local Python/Playwright renderer. */
+/** Sends the self-contained HTML artifact to the local TypeScript/Playwright renderer. */
 export async function createDiagramGif(html: string) {
   let response: Response
   try {
@@ -15,7 +15,7 @@ export async function createDiagramGif(html: string) {
       body: JSON.stringify({ html }),
     })
   } catch {
-    throw new Error('The local GIF service is unavailable. Start it with npm run gif:service.')
+    throw new Error('The GIF renderer is unavailable. Restart the Diagrammaton server.')
   }
   if (!response.ok) {
     const payload = await response.json().catch(() => null) as { error?: string } | null
@@ -24,7 +24,7 @@ export async function createDiagramGif(html: string) {
   return response.blob()
 }
 
-/** Downloads the self-contained HTML first, then its high-fidelity Playwright/Pillow GIF companion. */
+/** Downloads the self-contained HTML first, then its high-fidelity Playwright/Sharp GIF companion. */
 export async function downloadDiagramArtifacts(diagram: Diagram) {
   const html = buildDiagramHtml(diagram)
   downloadDiagramHtml(diagram, html)

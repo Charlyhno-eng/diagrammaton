@@ -37,7 +37,7 @@ export function EditorPage() {
       await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
       await downloadDiagramArtifacts(diagram)
     } catch (error) {
-      const fallback = prefs.locale === 'fr' ? 'Le service GIF local est indisponible. Lancez npm run gif:service.' : 'The local GIF service is unavailable. Start it with npm run gif:service.'
+      const fallback = prefs.locale === 'fr' ? 'Le moteur GIF est indisponible. Redémarrez le serveur Diagrammaton.' : 'The GIF renderer is unavailable. Restart the Diagrammaton server.'
       setExportError(error instanceof Error && !error.message.includes('unavailable') ? error.message : fallback)
     } finally { setExporting(false) }
   }

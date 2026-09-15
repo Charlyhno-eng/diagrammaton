@@ -16,7 +16,7 @@ describe('GIF export', () => {
     expect(htmlFileName('---')).toBe('diagram.html')
   })
 
-  it('sends standalone HTML to the local Python renderer', async () => {
+  it('sends standalone HTML to the local TypeScript renderer', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response('GIF89a', { headers: { 'Content-Type': 'image/gif' } }))
     vi.stubGlobal('fetch', fetchMock)
 
@@ -28,6 +28,6 @@ describe('GIF export', () => {
 
   it('explains how to recover when the local renderer is offline', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Network error')))
-    await expect(createDiagramGif('<!doctype html><html></html>')).rejects.toThrow('npm run gif:service')
+    await expect(createDiagramGif('<!doctype html><html></html>')).rejects.toThrow('Restart the Diagrammaton server')
   })
 })
