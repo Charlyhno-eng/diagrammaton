@@ -4,12 +4,12 @@ export type AnimationCategory = 'entrance' | 'emphasis' | 'technical' | 'constru
 export type NodeAnimation = string
 export type ArrowAnimation = string
 export type Side = 'top' | 'right' | 'bottom' | 'left'
-export type NodeKind = 'card' | 'service' | 'group' | 'platform' | 'database' | 'actor' | 'note' | 'metric'
+export type NodeKind = 'card' | 'service' | 'group' | 'platform' | 'database' | 'actor' | 'note' | 'metric' | 'technology' | 'electronic'
 export type EdgeRoute = 'orthogonal' | 'curve' | 'straight'
 
 export type DiagramNode = {
   id: string; kind: NodeKind; title: string; subtitle: string; x: number; y: number
-  eyebrow?: string; badge?: string; icon?: string; items?: string[]
+  eyebrow?: string; badge?: string; icon?: string; technology?: string; electronic?: string; items?: string[]
   width?: number; height?: number; color: string; textColor: string; animation: NodeAnimation; muted?: boolean
 }
 export type DiagramEdge = { id: string; from: string; to: string; fromSide: Side; toSide: Side; direction: 'forward' | 'both'; label: string; animation: ArrowAnimation; color: string; route?: EdgeRoute; dashed?: boolean }

@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { defaultDiagram } from '../domain/diagramTemplates'
+import { getTechnology } from '../domain/technologyCatalog'
+import { getElectronicComponent } from '../domain/electronicCatalog'
 import type { ArrowAnimation, Diagram, DiagramEdge, DiagramNode, NodeAnimation, NodeKind, Side } from '../domain/diagram'
 
 const defaults: Record<NodeKind, Pick<DiagramNode, 'title' | 'subtitle' | 'width' | 'height' | 'color' | 'icon' | 'eyebrow'>> = {
@@ -11,6 +13,8 @@ const defaults: Record<NodeKind, Pick<DiagramNode, 'title' | 'subtitle' | 'width
   actor: { title: 'Team', subtitle: 'Owner or user', width: 156, height: 156, color: '#171c27', icon: 'users', eyebrow: 'ACTOR' },
   note: { title: 'Automation', subtitle: 'Trigger and outcome', width: 220, height: 86, color: '#231a3f', icon: 'zap', eyebrow: 'ACTION' },
   metric: { title: '99.9%', subtitle: 'Key result', width: 164, height: 116, color: '#102521', icon: 'activity', eyebrow: 'METRIC' },
+  technology: { title: 'Technology', subtitle: 'Architecture building block', width: 176, height: 92, color: '#12181d', icon: 'box', eyebrow: 'TECHNOLOGY' },
+  electronic: { title: 'Electronic component', subtitle: 'Hardware building block', width: 176, height: 92, color: '#111b20', icon: 'box', eyebrow: 'ELECTRONICS' },
 }
 
 export function useDiagram() {
@@ -29,6 +33,18 @@ export function useDiagram() {
     const item: DiagramNode = { id, kind, ...base, x: 310 + offset, y: 230 + offset, textColor: '#f6f8fb', animation: 'none', items: kind === 'platform' ? ['Capability', 'Service', 'Tool'] : undefined }
     setDiagram(current => ({ ...current, nodes: [...current.nodes, item] })); setSelectedId(id); setSelectedEdgeId(null)
   }
+  const addTechnology = (technologyId: string) => {
+    const technology = getTechnology(technologyId); if (!technology) return
+    const id = `technology-${Date.now()}`, offset = diagram.nodes.length % 8 * 18
+    const item: DiagramNode = { id, kind: 'technology', title: technology.name, subtitle: technology.category, technology: technology.id, eyebrow: 'TECHNOLOGY', x: 310 + offset, y: 230 + offset, width: 176, height: 92, color: '#12181d', textColor: '#f6f8fb', animation: 'none' }
+    setDiagram(current => ({ ...current, nodes: [...current.nodes, item] })); setSelectedId(id); setSelectedEdgeId(null)
+  }
+  const addElectronic = (componentId: string) => {
+    const component = getElectronicComponent(componentId); if (!component) return
+    const id = `electronic-${Date.now()}`, offset = diagram.nodes.length % 8 * 18
+    const item: DiagramNode = { id, kind: 'electronic', title: component.name, subtitle: component.category, electronic: component.id, eyebrow: 'ELECTRONICS', x: 310 + offset, y: 230 + offset, width: 176, height: 92, color: '#111b20', textColor: '#f6f8fb', animation: 'none' }
+    setDiagram(current => ({ ...current, nodes: [...current.nodes, item] })); setSelectedId(id); setSelectedEdgeId(null)
+  }
   const copySelectedNode = () => { if (!selected) return; const { id: _id, x, y, ...template } = selected; setCopiedNode({ template, x, y, count: 0 }) }
   const pasteNode = () => { if (!copiedNode) return; const id = `block-${Date.now()}`, offset = (copiedNode.count + 1) * 28; setDiagram(current => ({ ...current, nodes: [...current.nodes, { ...copiedNode.template, id, x: copiedNode.x + offset, y: copiedNode.y + offset }] })); setCopiedNode(current => current ? { ...current, count: current.count + 1 } : current); setSelectedId(id); setSelectedEdgeId(null) }
   const removeSelectedNode = () => { if (!selected) return; setDiagram(current => ({ ...current, nodes: current.nodes.filter(node => node.id !== selected.id), edges: current.edges.filter(edge => edge.from !== selected.id && edge.to !== selected.id) })); setSelectedId(null) }
@@ -40,5 +56,5 @@ export function useDiagram() {
   const selectNode = (id: string | null) => { setSelectedId(id); setSelectedEdgeId(null) }
   const selectEdge = (id: string | null) => { setSelectedEdgeId(id); setSelectedId(null); const edge = diagram.edges.find(item => item.id === id); if (edge) setArrowAnimation(edge.animation) }
   const loadDiagram = (next: Diagram) => { setDiagram(next); setSelectedId(null); setSelectedEdgeId(null) }
-  return { diagram, setDiagram, loadDiagram, selected, selectedId, setSelectedId: selectNode, selectedEdge, selectedEdgeId, setSelectedEdgeId: selectEdge, updateNode, updateEdge, removeSelectedEdge, removeSelectedNode, moveNode, resizeNode, addNode, copySelectedNode, pasteNode, canPaste: Boolean(copiedNode), connect, arrowAnimation, setArrowAnimation: applyArrowAnimation, setNodeAnimation }
+  return { diagram, setDiagram, loadDiagram, selected, selectedId, setSelectedId: selectNode, selectedEdge, selectedEdgeId, setSelectedEdgeId: selectEdge, updateNode, updateEdge, removeSelectedEdge, removeSelectedNode, moveNode, resizeNode, addNode, addTechnology, addElectronic, copySelectedNode, pasteNode, canPaste: Boolean(copiedNode), connect, arrowAnimation, setArrowAnimation: applyArrowAnimation, setNodeAnimation }
 }

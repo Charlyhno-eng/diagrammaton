@@ -1,6 +1,6 @@
 declare module 'gifenc' {
   export type GifEncoder = {
-    writeFrame: (index: Uint8Array, width: number, height: number, options: { palette: Uint8Array; delay: number; repeat?: number }) => void
+    writeFrame: (index: Uint8Array, width: number, height: number, options: { palette: Uint8Array; delay: number; repeat?: number; dispose?: number }) => void
     finish: () => void
     bytesView: () => Uint8Array
   }

@@ -1,74 +1,187 @@
 import { GIFEncoder, applyPalette, quantize } from 'gifenc'
-import type { DiagramEdge, DiagramNode } from '../../features/diagram/domain/diagram'
+import type { Diagram } from '../../features/diagram/domain/diagram'
 
-const OUTPUT = { width: 960, height: 640, frames: 64, duration: 6400, padding: 72 }
-type Layout = { scale: number; offsetX: number; offsetY: number; minX: number; minY: number; maxX: number; maxY: number }
+const MAX_SIZE = { width: 960, height: 720 }
+const FRAME_COUNT = 18
+const FRAME_DELAY = 100
+type Connector = { path: SVGPathElement; d: string; color: string; animated: boolean; current: boolean; both: boolean; label: string; labelX: number; labelY: number }
 
-/** Generates a light, 10 fps looping GIF rather than a heavy low-frame-rate capture. */
-export async function downloadDiagramGif(nodes: DiagramNode[], edges: DiagramEdge[]) {
-  const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d', { willReadFrequently: true })!
-  canvas.width = OUTPUT.width; canvas.height = OUTPUT.height
-  const encoder = GIFEncoder(), index = Object.fromEntries(nodes.map(node => [node.id, node]))
-  const layout = getLayout(nodes)
-  renderFrame(ctx, nodes, edges, index, layout, OUTPUT.duration)
-  const palette = quantize(ctx.getImageData(0, 0, OUTPUT.width, OUTPUT.height).data, 256)
-  for (let frame = 0; frame < OUTPUT.frames; frame++) {
-    const time = frame / OUTPUT.frames * OUTPUT.duration
-    renderFrame(ctx, nodes, edges, index, layout, time)
-    const pixels = ctx.getImageData(0, 0, OUTPUT.width, OUTPUT.height).data
-    encoder.writeFrame(applyPalette(pixels, palette), OUTPUT.width, OUTPUT.height, { palette, delay: OUTPUT.duration / OUTPUT.frames, repeat: 0 })
+export const gifFileName = (title: string) => `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'diagrammaton'}.gif`
+
+/** Captures the real HTML/SVG stage so the GIF preserves the editor layout and local vector icons. */
+export async function createDiagramGif(stage: HTMLElement, diagram: Diagram) {
+  const renderer = await createFrameRenderer(stage, diagram)
+  const encoder = GIFEncoder()
+  for (let frame = 0; frame < FRAME_COUNT; frame += 1) {
+    const pixels = renderer.render(frame / FRAME_COUNT)
+    // A local palette preserves small icon and connector colors instead of allowing
+    // the first frame's dark gradients to consume most of the GIF color table.
+    const palette = quantize(pixels, 256)
+    encoder.writeFrame(applyPalette(pixels, palette), renderer.canvas.width, renderer.canvas.height, { palette, delay: FRAME_DELAY, repeat: 0, dispose: 1 })
   }
   encoder.finish()
-  const url = URL.createObjectURL(new Blob([encoder.bytesView()], { type: 'image/gif' })), anchor = document.createElement('a')
-  anchor.href = url; anchor.download = 'diagrammaton.gif'; anchor.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+  return new Blob([encoder.bytesView()], { type: 'image/gif' })
 }
 
-function renderFrame(ctx: CanvasRenderingContext2D, nodes: DiagramNode[], edges: DiagramEdge[], index: Record<string, DiagramNode>, layout: Layout, time: number) {
-  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#081329'; ctx.fillRect(0, 0, OUTPUT.width, OUTPUT.height)
-  ctx.translate(layout.offsetX, layout.offsetY); ctx.scale(layout.scale, layout.scale)
-  drawGrid(ctx, layout); drawEdges(ctx, edges, index, time); nodes.forEach(node => drawNode(ctx, node, time))
+/** Produces the exact opaque raster frame used by the encoder, useful for previews and regression tests. */
+export async function renderDiagramGifFrame(stage: HTMLElement, diagram: Diagram, progress = 0) {
+  const renderer = await createFrameRenderer(stage, diagram)
+  renderer.render(progress)
+  return renderer.canvas
 }
 
-function getLayout(nodes: DiagramNode[]): Layout {
-  if (!nodes.length) return { scale: 1, offsetX: 20, offsetY: 10, minX: 0, minY: 0, maxX: 920, maxY: 620 }
-  const minX = Math.min(...nodes.map(node => node.x)) - OUTPUT.padding, minY = Math.min(...nodes.map(node => node.y)) - OUTPUT.padding
-  const maxX = Math.max(...nodes.map(node => node.x + nodeWidth(node))) + OUTPUT.padding, maxY = Math.max(...nodes.map(node => node.y + nodeHeight(node))) + OUTPUT.padding
-  const contentWidth = Math.max(1, maxX - minX), contentHeight = Math.max(1, maxY - minY)
-  const scale = Math.min((OUTPUT.width - OUTPUT.padding) / contentWidth, (OUTPUT.height - OUTPUT.padding) / contentHeight, 1.25)
-  return { scale, offsetX: (OUTPUT.width - contentWidth * scale) / 2 - minX * scale, offsetY: (OUTPUT.height - contentHeight * scale) / 2 - minY * scale, minX, minY, maxX, maxY }
-}
-
-function nodeWidth(node: DiagramNode) { return node.width ?? 166 }
-function nodeHeight(node: DiagramNode) { return node.height ?? 110 }
-function endpoint(node: DiagramNode, side: DiagramEdge['fromSide']) { const width = nodeWidth(node), height = nodeHeight(node); if (side === 'top') return { x: node.x + width / 2, y: node.y - 1 }; if (side === 'bottom') return { x: node.x + width / 2, y: node.y + height + 1 }; if (side === 'left') return { x: node.x - 1, y: node.y + height / 2 }; return { x: node.x + width + 1, y: node.y + height / 2 } }
-function orthogonalPoints(start: { x: number; y: number }, end: { x: number; y: number }, fromSide: DiagramEdge['fromSide'], toSide: DiagramEdge['toSide']) { if ((fromSide === 'left' || fromSide === 'right') && (toSide === 'left' || toSide === 'right')) { const x = Math.round((start.x + end.x) / 2); return [start, { x, y: start.y }, { x, y: end.y }, end] } if ((fromSide === 'top' || fromSide === 'bottom') && (toSide === 'top' || toSide === 'bottom')) { const y = Math.round((start.y + end.y) / 2); return [start, { x: start.x, y }, { x: end.x, y }, end] } return fromSide === 'left' || fromSide === 'right' ? [start, { x: end.x, y: start.y }, end] : [start, { x: start.x, y: end.y }, end] }
-
-function drawGrid(ctx: CanvasRenderingContext2D, layout: Layout) { ctx.fillStyle = '#18304f'; const startX = Math.floor(layout.minX / 22) * 22, startY = Math.floor(layout.minY / 22) * 22; for (let x = startX; x <= layout.maxX; x += 22) for (let y = startY; y <= layout.maxY; y += 22) ctx.fillRect(x, y, 1, 1) }
-
-function drawEdges(ctx: CanvasRenderingContext2D, edges: DiagramEdge[], index: Record<string, DiagramNode>, time: number) {
-  edges.forEach(edge => {
-    const from = index[edge.from], to = index[edge.to]; if (!from || !to) return
-    const start = endpoint(from, edge.fromSide), end = endpoint(to, edge.toSide), points = orthogonalPoints(start, end, edge.fromSide, edge.toSide)
-    ctx.save(); ctx.strokeStyle = '#3f5877'; ctx.lineWidth = 2; ctx.beginPath(); trace(ctx, points); ctx.stroke()
-    if (edge.animation !== 'none') { const speed = edge.animation === 'current' ? .32 : .16, spacing = edge.animation === 'current' ? .14 : .24; for (let p = ((time * speed / 1000) % spacing) - spacing; p < 1; p += spacing) { const point = pointOnPath(points, p), radius = edge.animation === 'current' ? 3.4 : 3; ctx.fillStyle = edge.color; ctx.shadowColor = edge.color; ctx.shadowBlur = 7; ctx.beginPath(); ctx.arc(point.x, point.y, radius, 0, Math.PI * 2); ctx.fill() } }
-    ctx.shadowBlur = 0; drawArrowHead(ctx, points[points.length - 2], end, edge.color); if (edge.direction === 'both') drawArrowHead(ctx, points[1], start, edge.color); ctx.restore()
-  })
-}
-
-function trace(ctx: CanvasRenderingContext2D, points: { x: number; y: number }[]) { ctx.moveTo(points[0].x, points[0].y); points.slice(1).forEach(point => ctx.lineTo(point.x, point.y)) }
-function pointOnPath(points: { x: number; y: number }[], ratio: number) {
-  const lengths = points.slice(1).map((point, i) => Math.abs(point.x - points[i].x) + Math.abs(point.y - points[i].y))
-  const total = lengths.reduce((a, b) => a + b, 0); let target = Math.max(0, ratio) * total
-  for (let i = 0; i < lengths.length; i++) {
-    if (target <= lengths[i]) { const from = points[i], to = points[i + 1], t = lengths[i] ? target / lengths[i] : 0; return { x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t } }
-    target -= lengths[i]
+async function createFrameRenderer(stage: HTMLElement, diagram: Diagram) {
+  await document.fonts.ready
+  const scale = Math.min(MAX_SIZE.width / diagram.width, MAX_SIZE.height / diagram.height, 1)
+  const outputWidth = Math.max(1, Math.round(diagram.width * scale))
+  const outputHeight = Math.max(1, Math.round(diagram.height * scale))
+  const canvas = document.createElement('canvas')
+  canvas.width = outputWidth
+  canvas.height = outputHeight
+  const context = canvas.getContext('2d', { willReadFrequently: true })
+  if (!context) throw new Error('Canvas 2D is unavailable')
+  const connectors = readConnectors(stage)
+  const image = await renderStageImage(stage, diagram)
+  const background = diagram.background === 'light' ? '#ffffff' : diagram.background === 'blueprint' ? '#0a2233' : diagram.background === 'electric' ? '#08191b' : '#0a0e12'
+  return {
+    canvas,
+    render(progress: number) {
+      context.globalCompositeOperation = 'copy'
+      context.fillStyle = background
+      context.fillRect(0, 0, outputWidth, outputHeight)
+      context.globalCompositeOperation = 'source-over'
+      context.drawImage(image, 0, 0, outputWidth, outputHeight)
+      drawConnectors(context, connectors, scale, progress)
+      return context.getImageData(0, 0, outputWidth, outputHeight).data
+    },
   }
-  return points[points.length - 1]
 }
-function drawArrowHead(ctx: CanvasRenderingContext2D, from: { x: number; y: number }, to: { x: number; y: number }, color: string) { const angle = Math.atan2(to.y - from.y, to.x - from.x); ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(to.x, to.y); ctx.lineTo(to.x - 9 * Math.cos(angle - .5), to.y - 9 * Math.sin(angle - .5)); ctx.lineTo(to.x - 9 * Math.cos(angle + .5), to.y - 9 * Math.sin(angle + .5)); ctx.closePath(); ctx.fill() }
-function drawNode(ctx: CanvasRenderingContext2D, node: DiagramNode, time: number) {
-  const progress = Math.max(0, Math.min(1, time / 1000)); let x = node.x, y = node.y, opacity = 1, scale = 1
-  if (node.animation === 'slide-left') { x -= (1 - progress) * 65; opacity = progress } if (node.animation === 'zoom-in') { scale = .45 + progress * .55; opacity = progress } if (node.animation === 'build') { y += (1 - progress) * 42; opacity = progress } if (node.animation === 'energize') { opacity = progress; scale = 1 + Math.sin(time / 680) * .025 } if (node.animation === 'pulse') scale = 1 + Math.sin(time / 720) * .045
-  const width = nodeWidth(node), height = nodeHeight(node); ctx.save(); ctx.globalAlpha = opacity; ctx.translate(x + width / 2, y + height / 2); ctx.scale(scale, scale); ctx.translate(-width / 2, -height / 2); ctx.shadowColor = '#00000055'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 9; rounded(ctx, 0, 0, width, height, 15); ctx.fillStyle = node.color; ctx.fill(); ctx.shadowColor = 'transparent'; const titleY = height * .45; ctx.fillStyle = node.textColor; ctx.font = '700 15px Arial'; ctx.fillText(node.title, 17, titleY); ctx.globalAlpha *= .8; ctx.font = '11px Arial'; ctx.fillText(node.subtitle, 17, titleY + 20); const sheen = ctx.createLinearGradient(0, 0, width, height); sheen.addColorStop(0, '#ffffff25'); sheen.addColorStop(.55, '#ffffff00'); ctx.fillStyle = sheen; rounded(ctx, 0, 0, width, height, 15); ctx.fill(); ctx.restore()
+
+function readConnectors(stage: HTMLElement): Connector[] {
+  return Array.from(stage.querySelectorAll<SVGPathElement>('.edge-signal')).map(path => {
+    const group = path.closest<SVGGElement>('.diagram-edge')
+    const labelGroup = group?.querySelector<SVGGElement>('.edge-label')
+    const coordinates = labelGroup?.getAttribute('transform')?.match(/translate\(([-\d.]+)[ ,]([-\d.]+)\)/)
+    const color = getComputedStyle(group ?? path).color || getComputedStyle(path).stroke || '#84f24b'
+    return { path, d: path.getAttribute('d') ?? '', color, animated: path.classList.contains('edge-motion-flow') || path.classList.contains('edge-motion-current'), current: path.classList.contains('edge-motion-current'), both: path.hasAttribute('marker-start'), label: labelGroup?.querySelector('text')?.textContent ?? '', labelX: Number(coordinates?.[1] ?? 0), labelY: Number(coordinates?.[2] ?? 0) }
+  }).filter(connector => connector.d)
 }
-function rounded(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) { ctx.beginPath(); ctx.roundRect(x, y, width, height, radius) }
+
+function drawConnectors(context: CanvasRenderingContext2D, connectors: Connector[], scale: number, progress: number) {
+  context.save()
+  context.scale(scale, scale)
+  for (const connector of connectors) {
+    const path = new Path2D(connector.d)
+    context.lineCap = 'round'
+    context.lineJoin = 'round'
+    context.lineWidth = 2
+    context.strokeStyle = '#3b454e'
+    context.setLineDash([])
+    context.stroke(path)
+
+    context.strokeStyle = connector.color
+    context.shadowColor = connector.color
+    context.shadowBlur = 4
+    context.lineWidth = connector.current ? 3 : 2
+    context.setLineDash(connector.animated ? (connector.current ? [3, 12] : [8, 16]) : [])
+    context.lineDashOffset = connector.animated ? -48 * progress : 0
+    context.stroke(path)
+
+    const length = connector.path.getTotalLength()
+    drawArrow(context, connector.path, length, false, connector.color)
+    if (connector.both) drawArrow(context, connector.path, length, true, connector.color)
+    if (connector.animated && length > 0) {
+      for (let packet = 0; packet < 5; packet += 1) {
+        const point = connector.path.getPointAtLength(((progress + packet / 5) % 1) * length)
+        context.fillStyle = connector.color
+        context.beginPath()
+        context.arc(point.x, point.y, connector.current ? 3.7 : 3.2, 0, Math.PI * 2)
+        context.fill()
+      }
+    }
+    if (connector.label) drawLabel(context, connector)
+  }
+  context.restore()
+}
+
+function drawLabel(context: CanvasRenderingContext2D, connector: Connector) {
+  context.shadowBlur = 0
+  context.font = '700 9px Inter, Arial, sans-serif'
+  context.textAlign = 'center'
+  context.textBaseline = 'middle'
+  const width = context.measureText(connector.label).width + 14
+  context.fillStyle = '#10151a'
+  context.strokeStyle = '#364049'
+  context.lineWidth = 1
+  context.beginPath()
+  context.roundRect(connector.labelX - width / 2, connector.labelY - 10, width, 20, 7)
+  context.fill()
+  context.stroke()
+  context.fillStyle = '#9aa6b0'
+  context.fillText(connector.label, connector.labelX, connector.labelY)
+}
+
+function drawArrow(context: CanvasRenderingContext2D, path: SVGPathElement, length: number, reverse: boolean, color: string) {
+  const tip = path.getPointAtLength(reverse ? 0 : length)
+  const reference = path.getPointAtLength(reverse ? Math.min(10, length) : Math.max(0, length - 10))
+  const angle = Math.atan2(tip.y - reference.y, tip.x - reference.x)
+  context.fillStyle = color
+  context.beginPath()
+  context.moveTo(tip.x, tip.y)
+  context.lineTo(tip.x - 10 * Math.cos(angle - .55), tip.y - 10 * Math.sin(angle - .55))
+  context.lineTo(tip.x - 10 * Math.cos(angle + .55), tip.y - 10 * Math.sin(angle + .55))
+  context.closePath()
+  context.fill()
+}
+
+export async function downloadDiagramGif(stage: HTMLElement, diagram: Diagram) {
+  const blob = await createDiagramGif(stage, diagram)
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = gifFileName(diagram.title)
+  anchor.click()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+async function renderStageImage(stage: HTMLElement, diagram: Diagram) {
+  const clone = stage.cloneNode(true) as HTMLElement
+  clone.classList.remove('selected')
+  clone.querySelectorAll('.selected').forEach(element => element.classList.remove('selected'))
+  clone.querySelectorAll('.node-port,.resize-handle').forEach(element => element.remove())
+  clone.querySelector('.edge-layer')?.remove()
+  clone.querySelectorAll('svg').forEach(svg => svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg'))
+  clone.querySelectorAll<HTMLElement>('.html-node').forEach(node => {
+    node.style.setProperty('background', node.style.getPropertyValue('--node-tone') || '#11181d', 'important')
+    node.style.setProperty('background-image', 'none', 'important')
+    node.style.setProperty('box-shadow', 'none', 'important')
+    node.style.setProperty('filter', 'none', 'important')
+    node.style.setProperty('opacity', '1', 'important')
+  })
+  Object.assign(clone.style, {
+    position: 'relative',
+    inset: 'auto',
+    transform: 'none',
+    transformOrigin: '0 0',
+    width: `${diagram.width}px`,
+    height: `${diagram.height}px`,
+  })
+
+  const css = stylesheetText()
+  const source = `<svg xmlns="http://www.w3.org/2000/svg" width="${diagram.width}" height="${diagram.height}" viewBox="0 0 ${diagram.width} ${diagram.height}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" class="studio" data-theme="${diagram.background}" style="display:block;width:${diagram.width}px;min-height:0"><style>${css}\n*,*::before,*::after{animation:none!important;transition:none!important}.html-node::before,.html-node::after,.group-grid{display:none!important}.html-node,.html-node *,.kind-group,.diagram-stage{box-shadow:none!important;filter:none!important}.html-node,.html-node *{background-image:none!important}.html-node{background:var(--node-tone)!important;opacity:1!important}</style>${clone.outerHTML}</div></foreignObject></svg>`
+  const image = new Image()
+  image.decoding = 'sync'
+  image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(source)}`
+  await image.decode()
+  return image
+}
+
+function stylesheetText() {
+  return Array.from(document.styleSheets).flatMap(sheet => {
+    try {
+      return Array.from(sheet.cssRules, rule => rule.cssText)
+    } catch {
+      return []
+    }
+  }).join('\n')
+}
