@@ -3,7 +3,7 @@ import { electronicCategories, electronicComponents, getElectronicComponent } fr
 
 describe('electronic component catalog', () => {
   it('offers a useful starter set with unique bilingual entries', () => {
-    expect(electronicComponents.length).toBeGreaterThanOrEqual(20)
+    expect(electronicComponents.length).toBeGreaterThanOrEqual(40)
     expect(new Set(electronicComponents.map(item => item.id)).size).toBe(electronicComponents.length)
     for (const item of electronicComponents) {
       expect(item.name.length).toBeGreaterThan(1)
@@ -23,5 +23,9 @@ describe('electronic component catalog', () => {
       expect(item.svg, item.id).toMatch(/^<(path|rect|circle)/)
       expect(item.svg, item.id).not.toMatch(/<script|\son\w+=|javascript:/i)
     }
+  })
+
+  it.each(['fuse', 'crystal', 'bridge-rectifier', 'timer-555', 'fpga', 'buzzer', 'solar-panel', 'dc-dc-converter'])('includes %s', id => {
+    expect(getElectronicComponent(id)?.id).toBe(id)
   })
 })

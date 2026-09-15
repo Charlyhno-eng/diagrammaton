@@ -15,7 +15,7 @@ describe('technology catalog', () => {
     }
   })
 
-  it.each(['postgresql', 'mongodb', 'redis', 'docker', 'kubernetes', 'terraform', 'kafka', 'prometheus', 'typescript', 'python', 'go', 'rust'])('includes %s', id => {
+  it.each(['postgresql', 'mongodb', 'redis', 'docker', 'kubernetes', 'terraform', 'kafka', 'prometheus', 'langchain', 'onnx', 'hugging-face', 'ollama', 'pytorch', 'tensorflow', 'typescript', 'python', 'go', 'rust'])('includes %s', id => {
     expect(getTechnology(id)?.id).toBe(id)
   })
 })

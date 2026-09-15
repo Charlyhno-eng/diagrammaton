@@ -11,12 +11,12 @@
     "test:e2e": "playwright test",
     "test:e2e:update": "playwright test --update-snapshots",
     "test:watch": "vitest",
+    "gif:service": ".gif-service-venv/bin/python gif_service.py",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
-    "gifenc": "latest",
     "lucide-react": "latest",
     "react": "latest",
     "react-dom": "latest",

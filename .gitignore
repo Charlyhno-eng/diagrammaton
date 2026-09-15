@@ -1,4 +1,6 @@
 node_modules
+.gif-service-venv
+__pycache__
 dist
 .DS_Store
 *.tsbuildinfo

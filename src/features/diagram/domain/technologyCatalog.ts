@@ -1,22 +1,23 @@
 import type { SimpleIcon } from 'simple-icons'
 import {
-  siAngular, siAnsible, siApachecassandra, siApachecouchdb, siApachekafka, siApachepulsar, siArgo, siBitbucket, siBun,
+  siAngular, siAnsible, siAnthropic, siApachecassandra, siApachecouchdb, siApachekafka, siApachepulsar, siArgo, siBitbucket, siBun,
   siC, siCircleci, siClickhouse, siCloudflare, siCloudfoundry, siCockroachlabs, siCouchbase, siCplusplus,
   siDart, siDatadog, siDeno, siDigitalocean, siDjango, siDocker, siDuckdb, siDynatrace,
   siEclipsemosquitto, siElasticsearch, siElastic, siElixir, siEnvoyproxy, siErlang,
   siFastapi, siFirebase, siFlutter, siFlux, siFlydotio,
   siGithub, siGithubactions, siGitlab, siGo, siGooglecloud, siGrafana,
-  siHaskell, siHelm, siHetzner, siInfluxdb, siIstio, siJaeger, siJavascript, siJenkins,
+  siGooglegemini, siHaskell, siHelm, siHetzner, siHuggingface, siInfluxdb, siIstio, siJaeger, siJavascript, siJenkins, siJupyter,
+  siKeras,
   siKibana, siKotlin, siKubernetes, siLaravel, siLinux, siLogstash, siLua,
-  siMariadb, siMongodb, siMysql, siNatsdotio, siNeo4j, siNestjs, siNetlify, siNewrelic, siNextdotjs,
-  siNginx, siNodedotjs, siNomad, siNuxt, siOpentelemetry, siOpenjdk, siOpenstack, siOvh,
+  siLangchain, siMariadb, siMistralai, siMlflow, siMongodb, siMysql, siNatsdotio, siNeo4j, siNestjs, siNetlify, siNewrelic, siNextdotjs,
+  siNginx, siNodedotjs, siNomad, siNvidia, siNuxt, siOllama, siOnnx, siOpentelemetry, siOpenjdk, siOpenstack, siOvh,
   siPacker, siPhp, siPlanetscale, siPodman, siPostgresql, siPrisma, siPrometheus, siPulumi, siPython,
-  siRabbitmq, siRailway, siRancher, siReact, siRedis, siRedhatopenshift, siRender, siRuby, siRubyonrails, siRust,
+  siPytorch, siRabbitmq, siRailway, siRancher, siReact, siRedis, siRedhatopenshift, siRender, siRuby, siRubyonrails, siRust,
   siScala, siSentry, siSnowflake, siSocketdotio, siSplunk, siSpring, siSqlite, siSupabase, siSvelte, siSwift,
-  siTerraform, siTraefikproxy, siTravisci, siTypescript, siVagrant, siVault, siVercel, siVuedotjs,
+  siScikitlearn, siSpacy, siTensorflow, siTerraform, siTraefikproxy, siTravisci, siTypescript, siVagrant, siVault, siVercel, siVuedotjs, siWeightsandbiases,
 } from 'simple-icons'
 
-export type TechnologyCategory = 'databases' | 'devops' | 'messaging' | 'observability' | 'cloud' | 'runtimes'
+export type TechnologyCategory = 'databases' | 'devops' | 'messaging' | 'observability' | 'cloud' | 'ai' | 'runtimes'
 export type Technology = { id: string; name: string; category: TechnologyCategory; icon: SimpleIcon }
 
 export const technologyCategories: { id: TechnologyCategory; label: string; fr: string }[] = [
@@ -25,6 +26,7 @@ export const technologyCategories: { id: TechnologyCategory; label: string; fr: 
   { id: 'messaging', label: 'Messaging', fr: 'Messagerie' },
   { id: 'observability', label: 'Observability', fr: 'Observabilité' },
   { id: 'cloud', label: 'Cloud & edge', fr: 'Cloud & edge' },
+  { id: 'ai', label: 'AI, agents & RAG', fr: 'IA, agents & RAG' },
   { id: 'runtimes', label: 'Languages & frameworks', fr: 'Langages & frameworks' },
 ]
 
@@ -36,6 +38,7 @@ export const technologies: Technology[] = [
   technology('kafka', 'Apache Kafka', 'messaging', siApachekafka), technology('pulsar', 'Apache Pulsar', 'messaging', siApachepulsar), technology('rabbitmq', 'RabbitMQ', 'messaging', siRabbitmq), technology('nats', 'NATS', 'messaging', siNatsdotio), technology('mosquitto', 'Eclipse Mosquitto', 'messaging', siEclipsemosquitto), technology('socketio', 'Socket.IO', 'messaging', siSocketdotio),
   technology('prometheus', 'Prometheus', 'observability', siPrometheus), technology('grafana', 'Grafana', 'observability', siGrafana), technology('opentelemetry', 'OpenTelemetry', 'observability', siOpentelemetry), technology('datadog', 'Datadog', 'observability', siDatadog), technology('dynatrace', 'Dynatrace', 'observability', siDynatrace), technology('new-relic', 'New Relic', 'observability', siNewrelic), technology('sentry', 'Sentry', 'observability', siSentry), technology('jaeger', 'Jaeger', 'observability', siJaeger), technology('elastic', 'Elastic', 'observability', siElastic), technology('kibana', 'Kibana', 'observability', siKibana), technology('logstash', 'Logstash', 'observability', siLogstash), technology('splunk', 'Splunk', 'observability', siSplunk),
   technology('google-cloud', 'Google Cloud', 'cloud', siGooglecloud), technology('cloudflare', 'Cloudflare', 'cloud', siCloudflare), technology('digitalocean', 'DigitalOcean', 'cloud', siDigitalocean), technology('openstack', 'OpenStack', 'cloud', siOpenstack), technology('cloud-foundry', 'Cloud Foundry', 'cloud', siCloudfoundry), technology('hetzner', 'Hetzner', 'cloud', siHetzner), technology('ovhcloud', 'OVHcloud', 'cloud', siOvh), technology('vercel', 'Vercel', 'cloud', siVercel), technology('netlify', 'Netlify', 'cloud', siNetlify), technology('render', 'Render', 'cloud', siRender), technology('flyio', 'Fly.io', 'cloud', siFlydotio), technology('railway', 'Railway', 'cloud', siRailway),
+  technology('anthropic', 'Anthropic', 'ai', siAnthropic), technology('google-gemini', 'Google Gemini', 'ai', siGooglegemini), technology('mistral-ai', 'Mistral AI', 'ai', siMistralai), technology('hugging-face', 'Hugging Face', 'ai', siHuggingface), technology('langchain', 'LangChain', 'ai', siLangchain), technology('ollama', 'Ollama', 'ai', siOllama), technology('onnx', 'ONNX', 'ai', siOnnx), technology('nvidia', 'NVIDIA', 'ai', siNvidia), technology('pytorch', 'PyTorch', 'ai', siPytorch), technology('tensorflow', 'TensorFlow', 'ai', siTensorflow), technology('scikit-learn', 'scikit-learn', 'ai', siScikitlearn), technology('keras', 'Keras', 'ai', siKeras), technology('spacy', 'spaCy', 'ai', siSpacy), technology('mlflow', 'MLflow', 'ai', siMlflow), technology('weights-biases', 'Weights & Biases', 'ai', siWeightsandbiases), technology('jupyter', 'Jupyter', 'ai', siJupyter),
   technology('javascript', 'JavaScript', 'runtimes', siJavascript), technology('typescript', 'TypeScript', 'runtimes', siTypescript), technology('react', 'React', 'runtimes', siReact), technology('vue', 'Vue.js', 'runtimes', siVuedotjs), technology('angular', 'Angular', 'runtimes', siAngular), technology('svelte', 'Svelte', 'runtimes', siSvelte), technology('nextjs', 'Next.js', 'runtimes', siNextdotjs), technology('nuxt', 'Nuxt', 'runtimes', siNuxt), technology('nodejs', 'Node.js', 'runtimes', siNodedotjs), technology('deno', 'Deno', 'runtimes', siDeno), technology('bun', 'Bun', 'runtimes', siBun), technology('python', 'Python', 'runtimes', siPython), technology('django', 'Django', 'runtimes', siDjango), technology('fastapi', 'FastAPI', 'runtimes', siFastapi), technology('go', 'Go', 'runtimes', siGo), technology('rust', 'Rust', 'runtimes', siRust), technology('php', 'PHP', 'runtimes', siPhp), technology('laravel', 'Laravel', 'runtimes', siLaravel), technology('ruby', 'Ruby', 'runtimes', siRuby), technology('rails', 'Ruby on Rails', 'runtimes', siRubyonrails), technology('kotlin', 'Kotlin', 'runtimes', siKotlin), technology('openjdk', 'OpenJDK', 'runtimes', siOpenjdk), technology('spring', 'Spring', 'runtimes', siSpring), technology('swift', 'Swift', 'runtimes', siSwift), technology('dart', 'Dart', 'runtimes', siDart), technology('flutter', 'Flutter', 'runtimes', siFlutter), technology('c', 'C', 'runtimes', siC), technology('cpp', 'C++', 'runtimes', siCplusplus), technology('scala', 'Scala', 'runtimes', siScala), technology('elixir', 'Elixir', 'runtimes', siElixir), technology('erlang', 'Erlang', 'runtimes', siErlang), technology('lua', 'Lua', 'runtimes', siLua), technology('haskell', 'Haskell', 'runtimes', siHaskell), technology('nest', 'NestJS', 'runtimes', siNestjs),
 ]
 

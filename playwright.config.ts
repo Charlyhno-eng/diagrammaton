@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test'
 
 export default defineConfig({
   testDir: './tests/e2e',
-  timeout: 30_000,
+  timeout: 120_000,
   fullyParallel: false,
   forbidOnly: true,
   reporter: [['list']],
@@ -16,10 +16,8 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     launchOptions: { executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox'] },
   },
-  webServer: {
-    command: 'npm run dev -- --host 127.0.0.1 --port 4173',
-    url: 'http://127.0.0.1:4173',
-    reuseExistingServer: true,
-    timeout: 30_000,
-  },
+  webServer: [
+    { command: 'npm run gif:service', url: 'http://127.0.0.1:8000/health', reuseExistingServer: true, timeout: 30_000 },
+    { command: 'npm run dev -- --host 127.0.0.1 --port 4173', url: 'http://127.0.0.1:4173', reuseExistingServer: true, timeout: 30_000 },
+  ],
 })

@@ -3,6 +3,7 @@ import { getTechnology } from '../../features/diagram/domain/technologyCatalog'
 import { getElectronicComponent } from '../../features/diagram/domain/electronicCatalog'
 
 const esc = (value = '') => value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[char]!))
+const fileStem = (title: string, fallback: string) => title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || fallback
 const width = (node: DiagramNode) => node.width ?? 190
 const height = (node: DiagramNode) => node.height ?? 100
 const endpoint = (node: DiagramNode, side: Side) => side === 'top' ? { x: node.x + width(node) / 2, y: node.y } : side === 'bottom' ? { x: node.x + width(node) / 2, y: node.y + height(node) } : side === 'left' ? { x: node.x, y: node.y + height(node) / 2 } : { x: node.x + width(node), y: node.y + height(node) / 2 }
@@ -44,7 +45,9 @@ export function buildDiagramHtml(diagram: Diagram) {
 </style></head><body><main class="page"><header class="title"><small>DIAGRAMMATON · HTML ARTIFACT</small><h1>${esc(diagram.title)}</h1><p>${esc(diagram.subtitle)}</p></header><section class="board"><svg class="edges" viewBox="0 0 ${diagram.width} ${diagram.height}"><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="#86f34d"/></marker></defs>${edges}</svg>${diagram.nodes.map(renderNode).join('')}</section></main></body></html>`
 }
 
-export function downloadDiagramHtml(diagram: Diagram) {
-  const blob = new Blob([buildDiagramHtml(diagram)], { type: 'text/html;charset=utf-8' }), url = URL.createObjectURL(blob), anchor = document.createElement('a')
-  anchor.href = url; anchor.download = `${diagram.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'diagram'}.html`; anchor.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+export const htmlFileName = (title: string) => `${fileStem(title, 'diagram')}.html`
+
+export function downloadDiagramHtml(diagram: Diagram, html = buildDiagramHtml(diagram)) {
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' }), url = URL.createObjectURL(blob), anchor = document.createElement('a')
+  anchor.href = url; anchor.download = htmlFileName(diagram.title); anchor.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 }

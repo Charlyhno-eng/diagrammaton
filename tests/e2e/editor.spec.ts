@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Download, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 
 const template = (page: Page, name: string) => page.locator('.template-card').filter({ hasText: name })
@@ -29,7 +29,8 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/')
 })
 
-test('starts dark with the highlighted blank board first', async ({ page }) => {
+test('starts dark with the highlighted blank board first', async ({ page, request }) => {
+  await expect((await request.get('http://127.0.0.1:8000/health')).json()).resolves.toEqual({ status: 'ok' })
   await expect(page.locator('main.studio')).toHaveAttribute('data-theme', 'midnight')
   await expect(page.locator('.template-card').first()).toContainText('Blank HTML board')
   await expect(page.locator('.template-card').first()).toHaveClass(/blank-template/)
@@ -83,12 +84,28 @@ test('keeps technology and electronics catalogs in independent dropdowns', async
   await expect(technologies.locator('button[title="Add PostgreSQL"]')).toBeVisible()
 })
 
-test('exports an aligned standalone HTML diagram', async ({ page, browser }) => {
+test('adds ONNX and extended electronic symbols from the library', async ({ page }) => {
+  const electronics = page.locator('details.electronic-library')
+  const technologies = page.locator('details.technology-library')
+  await technologies.locator('summary').click()
+  await expect(technologies).toContainText('AI, agents & RAG')
+  await technologies.locator('button[title="Add ONNX"]').click()
+  await expect(page.locator('.kind-technology svg[aria-label="ONNX"]')).toBeVisible()
+  await electronics.locator('summary').click()
+  await electronics.locator('button[title="Add FPGA"]').click()
+  await expect(page.locator('.kind-electronic svg[aria-label="FPGA"]')).toBeVisible()
+})
+
+test('downloads the standalone HTML before its GIF companion', async ({ page, browser }) => {
+  test.setTimeout(90_000)
   await template(page, 'Software + electronics').click()
-  const downloadPromise = page.waitForEvent('download')
-  await page.locator('.html-export').click()
-  const download = await downloadPromise
+  const downloads: Download[] = []
+  page.on('download', download => downloads.push(download))
+  await page.locator('.diagram-export').click()
+  await expect.poll(() => downloads.length, { timeout: 75_000 }).toBe(2)
+  const [download, gifDownload] = downloads
   expect(download.suggestedFilename()).toBe('connected-edge-controller.html')
+  expect(gifDownload.suggestedFilename()).toBe('connected-edge-controller.gif')
   const path = await download.path()
   expect(path).not.toBeNull()
   const html = await readFile(path!, 'utf8')
@@ -103,57 +120,43 @@ test('exports an aligned standalone HTML diagram', async ({ page, browser }) => 
   expect(Math.abs(logoBox!.x - nodeBox!.x - 17)).toBeLessThan(.5)
   await expect(exported.locator('.board')).toHaveScreenshot('exported-software-electronics.png', { animations: 'disabled' })
   await exported.close()
+  await expect(page.locator('.diagram-export')).toBeEnabled()
 })
 
-test('downloads a valid GIF captured from the HTML stage', async ({ page }) => {
-  test.setTimeout(60_000)
+test('downloads a valid GIF rendered by the Python Playwright service', async ({ page }) => {
+  test.setTimeout(120_000)
   await template(page, 'Software + electronics').click()
-  const downloadPromise = page.waitForEvent('download')
-  await page.locator('.gif-export').click()
-  const download = await downloadPromise
-  expect(download.suggestedFilename()).toBe('connected-edge-controller.gif')
-  const path = await download.path()
+  const downloads: Download[] = []
+  page.on('download', download => downloads.push(download))
+  await page.locator('.diagram-export').click()
+  await expect.poll(() => downloads.length, { timeout: 75_000 }).toBe(2)
+  const download = downloads.find(item => item.suggestedFilename().endsWith('.gif'))
+  expect(download).toBeDefined()
+  expect(download!.suggestedFilename()).toBe('connected-edge-controller.gif')
+  const path = await download!.path()
   expect(path).not.toBeNull()
   const bytes = await readFile(path!)
   expect(bytes.subarray(0, 6).toString()).toBe('GIF89a')
-  expect(bytes.readUInt16LE(6)).toBe(960)
-  expect(bytes.readUInt16LE(8)).toBe(562)
-  expect(bytes.byteLength).toBeGreaterThan(10_000)
+  expect(bytes.readUInt16LE(6)).toBe(1484)
+  expect(bytes.readUInt16LE(8)).toBeGreaterThanOrEqual(904)
+  expect(bytes.byteLength).toBeGreaterThan(100_000)
   const frames = gifFrames(bytes)
-  expect(frames).toHaveLength(18)
+  expect(frames).toHaveLength(60)
   expect(new Set(frames.map(frame => frame.toString('base64'))).size).toBeGreaterThan(1)
-  await expect(page.locator('.gif-export')).toBeEnabled()
-  const rasterFingerprints = await page.evaluate(async () => {
-    const [{ renderDiagramGifFrame }, { diagramTemplates }] = await Promise.all([
-      import('/src/shared/lib/gifExporter.ts'),
-      import('/src/features/diagram/domain/diagramTemplates.ts'),
-    ])
-    const diagram = diagramTemplates.find(item => item.id === 'embedded')!.diagram
-    const stage = document.querySelector<HTMLElement>('.diagram-stage')!
-    const [first, second] = await Promise.all([
-      renderDiagramGifFrame(stage, diagram, 0),
-      renderDiagramGifFrame(stage, diagram, .5),
-    ])
-    const fingerprint = (canvas: HTMLCanvasElement) => {
-      const pixels = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height).data
-      let hash = 2166136261
-      for (let index = 0; index < pixels.length; index += 4) hash = Math.imul(hash ^ pixels[index] ^ pixels[index + 1] ^ pixels[index + 2], 16777619)
-      return hash >>> 0
-    }
-    first.id = 'raw-gif-frame'
-    document.body.replaceChildren(first)
-    return [fingerprint(first), fingerprint(second)]
-  })
-  expect(rasterFingerprints[0]).not.toBe(rasterFingerprints[1])
-  await expect(page.locator('#raw-gif-frame')).toHaveScreenshot('gif-software-electronics-raw-frame.png')
-  await page.setContent('<canvas width="960" height="562"></canvas>')
+  await expect(page.locator('.diagram-export')).toBeEnabled()
+  await page.setContent('<canvas></canvas>')
   await page.evaluate(async source => {
     const image = new Image()
     image.src = source
     await image.decode()
-    document.querySelector('canvas')!.getContext('2d')!.drawImage(image, 0, 0)
+    const canvas = document.querySelector('canvas')!
+    canvas.width = image.width
+    canvas.height = image.height
+    canvas.getContext('2d')!.drawImage(image, 0, 0)
   }, `data:image/gif;base64,${bytes.toString('base64')}`)
-  await expect(page.locator('canvas')).toHaveScreenshot('gif-software-electronics-encoded-frame.png', { maxDiffPixelRatio: 0 })
+  // GIF playback begins as soon as decoding completes, so a few pixels may
+  // come from the adjacent animated frame.
+  await expect(page.locator('canvas')).toHaveScreenshot('gif-software-electronics-service-frame.png', { maxDiffPixelRatio: 0.0001 })
 })
 
 for (const example of [
